@@ -1,0 +1,6 @@
+{
+  "name": "Aether-Synthesizer: Autonomous Strategy & Backtest Engine",
+  "description": "A high-tech quantitative trading backtest engine and dashboard that simulates professional 1:2 Risk-to-Reward strategy performances.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
