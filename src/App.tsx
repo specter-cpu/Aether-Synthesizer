@@ -210,6 +210,39 @@ export default function App() {
           });
         }
 
+                // --- QUANT QUANTITATIVE ENGINE CALCULATIONS ---
+        let totalWinsCount = 0;
+        let totalLossesCount = 0;
+        let grossWinsR = 0;
+        let grossLossesR = 0;
+        
+        let currentWinStreak = 0;
+        let currentLossStreak = 0;
+        let maxWinStreak = 0;
+        let maxLossStreak = 0;
+
+        simulatedTrades.forEach((t) => {
+          if (t.outcome === "WIN") {
+            totalWinsCount++;
+            grossWinsR += t.rGain;
+            currentWinStreak++;
+            currentLossStreak = 0;
+            if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
+          } else if (t.outcome === "LOSS") {
+            totalLossesCount++;
+            grossLossesR += Math.abs(t.rGain);
+            currentLossStreak++;
+            currentWinStreak = 0;
+            if (currentLossStreak > maxLossStreak) maxLossStreak = currentLossStreak;
+          } else {
+            currentWinStreak = 0;
+            currentLossStreak = 0;
+          }
+        });
+
+        const profitFactor = grossLossesR > 0 ? parseFloat((grossWinsR / grossLossesR).toFixed(2)) : grossWinsR;
+        const expectedWorstDrawdownR = maxLossStreak * 1.0; 
+
         const localResult: BacktestResponse = {
           success: true,
           trades: simulatedTrades,
@@ -217,7 +250,15 @@ export default function App() {
             optimizedTimeframe: getOptimalTimeframe(strategyProtocol, horizonMode),
             optimizedProtocol: strategyProtocol,
             strategyCode: `/*\n * @strategy Aether Quantitative Protocol: ${strategyProtocol}\n * Enforced parameters: Risk ${riskPerTradePercent}%, Cap $${accountSize.toLocaleString()}\n */\n//@version=5\nstrategy("Aether Synthesizer Edge Matrix", overlay=true)`,
-            reportNarrative: `Execution loop completed successfully across ${seriesSize} sample sequences utilizing localized structural parameters.`
+            reportNarrative: `Simulation successfully completed across ${seriesSize} iterations. Detected an operational Profit Factor of ${profitFactor} with a maximum peak-to-trough consecutive drawdown string of -${expectedWorstDrawdownR}R units.`
+          },
+          analytics: {
+            profitFactor,
+            maxWinStreak,
+            maxLossStreak,
+            expectedWorstDrawdownR,
+            grossWinsR,
+            grossLossesR
           }
         };
 
