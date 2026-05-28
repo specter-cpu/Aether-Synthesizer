@@ -1158,9 +1158,9 @@ export default function App() {
 
                 </div>
 
-                {/* Analytical inspector diagnostics (Col-4) */}
+                                {/* Analytical inspector diagnostics (Col-4) */}
                 <div className="lg:col-span-4 bg-slate-900/35 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md shadow-xl flex flex-col justify-between relative overflow-hidden">
-                  
+
                   {/* Neon HUD Bracket Styling */}
                   <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t-2 border-r-2 border-cyan-500/60"></div>
                   <div className="absolute bottom-0 left-0 w-2.5 h-2.5 border-b-2 border-l-2 border-cyan-500/60"></div>
@@ -1181,13 +1181,13 @@ export default function App() {
                           <span
                             className={`px-2 py-0.5 rounded text-[9px] font-mono font-extrabold border ${
                               currentSelectedTrade.outcome === "WIN"
-                                ? "bg-emerald-950/65 text-emerald-400 border-emerald-500/60"
+                                ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]"
                                 : currentSelectedTrade.outcome === "SKIPPED"
                                   ? "bg-amber-950/65 text-amber-400 border-amber-500/60 animate-pulse"
-                                  : "bg-rose-950/65 text-rose-400 border-rose-500/60"
+                                  : "bg-rose-950/40 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.05)]"
                             }`}
                           >
-                            {currentSelectedTrade.outcome === "WIN" ? "PROFIT EXITED" : currentSelectedTrade.outcome === "SKIPPED" ? "NEWS BUFFERED" : "LIQUIDITY SWEPT"}
+                            {currentSelectedTrade.outcome === "WIN" ? "TARGET HIT" : currentSelectedTrade.outcome === "SKIPPED" ? "NEWS BUFFERED" : currentSelectedTrade.comment.includes("sweep") ? "LIQUIDITY SWEEP" : "STOPPED OUT"}
                           </span>
                         </div>
 
@@ -1227,6 +1227,11 @@ export default function App() {
                             BRACKET EXIT PARAMETERS (1:2 RR MATRIX)
                           </p>
                           <div className="bg-slate-950 border border-slate-800/85 rounded-xl p-3 space-y-3 relative font-mono text-[10.5px]">
+                            {/* Proportional visual guide line metric */}
+                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden flex">
+                              <div className={`h-full ${currentSelectedTrade.outcome === 'WIN' ? 'bg-emerald-500 w-full' : currentSelectedTrade.outcome === 'SKIPPED' ? 'bg-slate-700 w-0' : 'bg-rose-500 w-1/3'}`} />
+                            </div>
+
                             {/* Take profit trigger */}
                             <div className={`flex items-center justify-between border-l-2 pl-2 ${currentSelectedTrade.outcome === "WIN" ? "border-emerald-500" : "border-slate-800"}`}>
                               <div>
@@ -1286,6 +1291,8 @@ export default function App() {
                   </div>
 
                 </div>
+  
+                    
 
               </div>
 
