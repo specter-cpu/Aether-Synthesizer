@@ -879,7 +879,7 @@ export default function App() {
 
                   </div>
 
-                  {/* Diagnostic Console Tabs Container */}
+                                    {/* Diagnostic Console Tabs Container */}
                   <DiagnosticTerminal
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
@@ -892,98 +892,148 @@ export default function App() {
                     totalTrades={seriesSize}
                     timeframe={getOptimalTimeframe(strategyProtocol, horizonMode)}
                   >
-                    {/* Performance Line Chart embedded inside Diagnostic Terminal */}
-                    <div id="equity-curve-chart-wrapper" className="overflow-hidden w-full h-[235px]">
-                      <ResponsiveContainer key={`chart-${horizonMode}-${symbol}`} width="100%" height={235} minWidth={280}>
-                        <LineChart
-                          data={chartData}
-                          margin={{ top: 10, right: 15, left: -25, bottom: -5 }}
-                        >
-                          <defs>
-                            <linearGradient id="gradientR" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.18} />
-                              <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#475569"
-                            fontSize={9}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            stroke="#475569"
-                            fontSize={9}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(t) => `${t >= 0 ? "+" : ""}${t}R`}
-                          />
-                          <Tooltip
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                const p = payload[0].payload;
-                                const isFirst = p.name === "Start";
-                                const rVal = p.R;
-                                const balance = p.balance;
-                                const pctGain = rVal * riskPerTradePercent;
+                    {/* PERFORMANCE CHART TAB BLOCK */}
+                    {activeTab === "chart" && (
+                      <div id="equity-curve-chart-wrapper" className="overflow-hidden w-full h-[235px]">
+                        <ResponsiveContainer key={`chart-${horizonMode}-${symbol}`} width="100%" height={235} minWidth={280}>
+                          <LineChart
+                            data={chartData}
+                            margin={{ top: 10, right: 15, left: -25, bottom: -5 }}
+                          >
+                            <defs>
+                              <linearGradient id="gradientR" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.18} />
+                                <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                            <XAxis
+                              dataKey="name"
+                              stroke="#475569"
+                              fontSize={9}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <YAxis
+                              stroke="#475569"
+                              fontSize={9}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(t) => `${t >= 0 ? "+" : ""}${t}R`}
+                            />
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const p = payload[0].payload;
+                                  const isFirst = p.name === "Start";
+                                  const rVal = p.R;
+                                  const balance = p.balance;
+                                  const pctGain = rVal * riskPerTradePercent;
 
-                                return (
-                                  <div className="bg-slate-950 border border-cyan-500/20 px-3 py-2.5 rounded-lg text-[11px] font-mono shadow-xl space-y-1 select-none">
-                                    <p className="text-slate-400 font-bold border-b border-slate-900 pb-0.5 mb-1 text-center">{p.name}</p>
-                                    <div className="flex justify-between gap-5">
-                                      <span className="text-slate-500">Net R units:</span>
-                                      <span className={rVal >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                                        {rVal >= 0 ? "+" : ""}{rVal} R
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between gap-5">
-                                      <span className="text-slate-500">Balance:</span>
-                                      <span className="text-slate-200">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                    </div>
-                                    {!isFirst && (
-                                      <div className="flex justify-between gap-5 border-t border-slate-900/50 pt-1">
-                                        <span className="text-slate-500">Rate of change:</span>
-                                        <span className={pctGain >= 0 ? "text-emerald-400" : "text-rose-400"}>
-                                          {pctGain >= 0 ? "+" : ""}{pctGain.toFixed(2)}%
+                                  return (
+                                    <div className="bg-slate-950 border border-cyan-500/20 px-3 py-2.5 rounded-lg text-[11px] font-mono shadow-xl space-y-1 select-none">
+                                      <p className="text-slate-400 font-bold border-b border-slate-900 pb-0.5 mb-1 text-center">{p.name}</p>
+                                      <div className="flex justify-between gap-5">
+                                        <span className="text-slate-500">Net R units:</span>
+                                        <span className={rVal >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                                          {rVal >= 0 ? "+" : ""}{rVal} R
                                         </span>
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" opacity={0.4} />
-                          
-                          {/* Glow outline Line */}
-                          <Line
-                            type="monotone"
-                            dataKey="R"
-                            stroke="#22d3ee"
-                            strokeWidth={5}
-                            strokeOpacity={0.12}
-                            className="blur-[4px]"
-                            dot={false}
-                            activeDot={false}
-                            isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
-                          />
-                          {/* Primary Sharpe Line */}
-                          <Line
-                            type="monotone"
-                            dataKey="R"
-                            stroke="#06b6d4"
-                            strokeWidth={2.5}
-                            dot={{ r: 3.5, stroke: "#0891b2", strokeWidth: 1.5, fill: "#020617" }}
-                            activeDot={{ r: 6, stroke: "#22d3ee", strokeWidth: 2, fill: "#020617" }}
-                            isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                                      <div className="flex justify-between gap-5">
+                                        <span className="text-slate-500">Balance:</span>
+                                        <span className="text-slate-200">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                      </div>
+                                      {!isFirst && (
+                                        <div className="flex justify-between gap-5 border-t border-slate-900/50 pt-1">
+                                          <span className="text-slate-500">Rate of change:</span>
+                                          <span className={pctGain >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                                            {pctGain >= 0 ? "+" : ""}{pctGain.toFixed(2)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" opacity={0.4} />
+
+                            <Line
+                              type="monotone"
+                              dataKey="R"
+                              stroke="#22d3ee"
+                              strokeWidth={5}
+                              strokeOpacity={0.12}
+                              className="blur-[4px]"
+                              dot={false}
+                              activeDot={false}
+                              isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="R"
+                              stroke="#06b6d4"
+                              strokeWidth={2.5}
+                              dot={{ r: 3.5, stroke: "#0891b2", strokeWidth: 1.5, fill: "#020617" }}
+                              activeDot={{ r: 6, stroke: "#22d3ee", strokeWidth: 2, fill: "#020617" }}
+                              isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
+                    {/* INTELLIGENCE REPORT MATRIX PANEL TAB BLOCK */}
+                    {activeTab === "narrative" && data?.analytics && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-2 animate-fadeIn">
+                        {/* Profit Factor Card */}
+                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
+                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Profit Factor</span>
+                          <div className="my-1.5">
+                            <span className={`text-xl font-bold tracking-tight ${(data.analytics.profitFactor || 0) >= 1.5 ? "text-cyan-400" : "text-slate-300"}`}>
+                              {data.analytics.profitFactor}
+                            </span>
+                          </div>
+                          <span className="text-[8px] font-sans text-slate-500">Gross Win R / Gross Loss R</span>
+                        </div>
+
+                        {/* Max Loss Streak Card */}
+                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
+                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Max Loss Streak</span>
+                          <div className="my-1.5">
+                            <span className="text-xl font-bold tracking-tight text-rose-500">
+                              -{data.analytics.maxLossStreak} R
+                            </span>
+                          </div>
+                          <span className="text-[8px] font-sans text-slate-500">Consecutive invalidations</span>
+                        </div>
+
+                        {/* Max Win Streak Card */}
+                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
+                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Max Win Streak</span>
+                          <div className="my-1.5">
+                            <span className="text-xl font-bold tracking-tight text-emerald-400">
+                              +{data.analytics.maxWinStreak} Streak
+                            </span>
+                          </div>
+                          <span className="text-[8px] font-sans text-slate-500">Consecutive targets hit</span>
+                        </div>
+
+                        {/* Total Volume Yield Breakdown Card */}
+                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
+                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Gross Yield Outlay</span>
+                          <div className="my-1 text-[10px] font-mono font-medium space-y-0.5 text-slate-300">
+                            <div>Wins: <span className="text-emerald-400">+{data.analytics.grossWinsR.toFixed(1)}R</span></div>
+                            <div>Losses: <span className="text-rose-400">-{data.analytics.grossLossesR.toFixed(1)}R</span></div>
+                          </div>
+                          <span className="text-[8px] font-sans text-slate-500">Total volume distribution</span>
+                        </div>
+                      </div>
+                    )}
                   </DiagnosticTerminal>
+ 
+                                           
 
                 </div>
 
