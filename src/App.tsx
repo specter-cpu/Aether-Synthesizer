@@ -879,7 +879,7 @@ export default function App() {
 
                   </div>
 
-                                    {/* Diagnostic Console Tabs Container */}
+                  {/* Diagnostic Console Container */}
                   <DiagnosticTerminal
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
@@ -892,7 +892,7 @@ export default function App() {
                     totalTrades={seriesSize}
                     timeframe={getOptimalTimeframe(strategyProtocol, horizonMode)}
                   >
-                    {/* PERFORMANCE CHART TAB BLOCK */}
+                    {/* OPTION A: PERFORMANCE CHART VIEW */}
                     {activeTab === "chart" && (
                       <div id="equity-curve-chart-wrapper" className="overflow-hidden w-full h-[235px]">
                         <ResponsiveContainer key={`chart-${horizonMode}-${symbol}`} width="100%" height={235} minWidth={280}>
@@ -907,20 +907,8 @@ export default function App() {
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
-                            <XAxis
-                              dataKey="name"
-                              stroke="#475569"
-                              fontSize={9}
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <YAxis
-                              stroke="#475569"
-                              fontSize={9}
-                              tickLine={false}
-                              axisLine={false}
-                              tickFormatter={(t) => `${t >= 0 ? "+" : ""}${t}R`}
-                            />
+                            <XAxis dataKey="name" stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#475569" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(t) => `${t >= 0 ? "+" : ""}${t}R`} />
                             <Tooltip
                               content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
@@ -958,80 +946,56 @@ export default function App() {
                               }}
                             />
                             <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" opacity={0.4} />
-
-                            <Line
-                              type="monotone"
-                              dataKey="R"
-                              stroke="#22d3ee"
-                              strokeWidth={5}
-                              strokeOpacity={0.12}
-                              className="blur-[4px]"
-                              dot={false}
-                              activeDot={false}
-                              isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="R"
-                              stroke="#06b6d4"
-                              strokeWidth={2.5}
-                              dot={{ r: 3.5, stroke: "#0891b2", strokeWidth: 1.5, fill: "#020617" }}
-                              activeDot={{ r: 6, stroke: "#22d3ee", strokeWidth: 2, fill: "#020617" }}
-                              isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
-                            />
+                            <Line type="monotone" dataKey="R" stroke="#22d3ee" strokeWidth={5} strokeOpacity={0.12} className="blur-[4px]" dot={false} activeDot={false} isAnimationActive={!(seriesSize === 100 || seriesSize === 250)} />
+                            <Line type="monotone" dataKey="R" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3.5, stroke: "#0891b2", strokeWidth: 1.5, fill: "#020617" }} activeDot={{ r: 6, stroke: "#22d3ee", strokeWidth: 2, fill: "#020617" }} isAnimationActive={!(seriesSize === 100 || seriesSize === 250)} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                     )}
 
-                    {/* INTELLIGENCE REPORT MATRIX PANEL TAB BLOCK */}
+                    {/* OPTION B: INTEGRATED INTELLIGENCE REPORT MATRIX PANELS */}
                     {activeTab === "narrative" && data?.analytics && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-2 animate-fadeIn">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-1 animate-fadeIn w-full h-[235px] content-center">
                         {/* Profit Factor Card */}
-                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
-                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Profit Factor</span>
-                          <div className="my-1.5">
-                            <span className={`text-xl font-bold tracking-tight ${(data.analytics.profitFactor || 0) >= 1.5 ? "text-cyan-400" : "text-slate-300"}`}>
-                              {data.analytics.profitFactor}
-                            </span>
-                          </div>
-                          <span className="text-[8px] font-sans text-slate-500">Gross Win R / Gross Loss R</span>
+                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
+                          <span className="text-[9px] font-mono text-cyan-400 tracking-wider uppercase font-bold">Profit Factor</span>
+                          <span className={`text-xl font-bold font-display tracking-tight ${(data.analytics.profitFactor || 0) >= 1.5 ? "text-cyan-400" : "text-slate-300"}`}>
+                            {data.analytics.profitFactor}
+                          </span>
+                          <span className="text-[8px] text-slate-500">Gross Win R / Gross Loss R</span>
                         </div>
 
                         {/* Max Loss Streak Card */}
-                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
-                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Max Loss Streak</span>
-                          <div className="my-1.5">
-                            <span className="text-xl font-bold tracking-tight text-rose-500">
-                              -{data.analytics.maxLossStreak} R
-                            </span>
-                          </div>
-                          <span className="text-[8px] font-sans text-slate-500">Consecutive invalidations</span>
+                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
+                          <span className="text-[9px] font-mono text-rose-400 tracking-wider uppercase font-bold">Max Loss Streak</span>
+                          <span className="text-xl font-bold font-display tracking-tight text-rose-500">
+                            -{data.analytics.maxLossStreak} R
+                          </span>
+                          <span className="text-[8px] text-slate-500">Consecutive invalidations</span>
                         </div>
 
                         {/* Max Win Streak Card */}
-                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
-                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Max Win Streak</span>
-                          <div className="my-1.5">
-                            <span className="text-xl font-bold tracking-tight text-emerald-400">
-                              +{data.analytics.maxWinStreak} Streak
-                            </span>
-                          </div>
-                          <span className="text-[8px] font-sans text-slate-500">Consecutive targets hit</span>
+                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
+                          <span className="text-[9px] font-mono text-emerald-400 tracking-wider uppercase font-bold">Max Win Streak</span>
+                          <span className="text-xl font-bold font-display tracking-tight text-emerald-400">
+                            +{data.analytics.maxWinStreak} Streak
+                          </span>
+                          <span className="text-[8px] text-slate-500">Consecutive targets hit</span>
                         </div>
 
                         {/* Total Volume Yield Breakdown Card */}
-                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-inner">
-                          <span className="text-[9px] font-mono text-slate-400 tracking-wider uppercase">Gross Yield Outlay</span>
-                          <div className="my-1 text-[10px] font-mono font-medium space-y-0.5 text-slate-300">
+                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
+                          <span className="text-[9px] font-mono text-indigo-400 tracking-wider uppercase font-bold">Gross Yield Outlay</span>
+                          <div className="text-[10px] font-mono font-medium space-y-0.5 text-slate-300">
                             <div>Wins: <span className="text-emerald-400">+{data.analytics.grossWinsR.toFixed(1)}R</span></div>
                             <div>Losses: <span className="text-rose-400">-{data.analytics.grossLossesR.toFixed(1)}R</span></div>
                           </div>
-                          <span className="text-[8px] font-sans text-slate-500">Total volume distribution</span>
+                          <span className="text-[8px] text-slate-500">Total volume distribution</span>
                         </div>
                       </div>
                     )}
                   </DiagnosticTerminal>
+                      
  
                                            
 
