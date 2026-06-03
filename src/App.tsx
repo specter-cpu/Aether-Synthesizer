@@ -67,7 +67,7 @@ export default function App() {
   const [priceBid, setPriceBid] = useState<number>(0);
   const [priceAsk, setPriceAsk] = useState<number>(0);
 
-  // Tick live price telemetry feedback based on chosen symbol + Live Proxy Hook
+   // Tick live price telemetry feedback based on chosen symbol + Live Proxy Hook
   useEffect(() => {
     let basePrice = 2330.0;
     if (symbol === "XAU/USD") basePrice = 2330.00;
@@ -124,8 +124,15 @@ export default function App() {
           setPriceBid(incomingPrice - 0.07);
           setPriceAsk(incomingPrice + 0.07);
           
-          if (soundEnabled && typeof playTick === 'function') {
-            playTick();
+          // Completely safe check to prevent white-screen crashes if audio utils aren't loaded
+          try {
+            // @ts-ignore
+            if (soundEnabled && typeof playTick === 'function') {
+              // @ts-ignore
+              playTick();
+            }
+          } catch (audioError) {
+            // Catches any missing function issues silently so the app runs smoothly
           }
         }
       } catch (error) {
@@ -137,12 +144,13 @@ export default function App() {
       console.log('🔌 Data proxy disconnected. Falling back to local simulation metrics.');
     };
 
-    // Cleanup both the simulation interval and the websocket socket connection on switch
+    // Cleanup both the simulation interval and the websocket connection on component unmount/change
     return () => {
       clearInterval(interval);
       socket.close();
     };
   }, [symbol, soundEnabled]);
+
 
 
   // Sound Matrix State (Web Audio API)
