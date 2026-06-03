@@ -61,7 +61,7 @@ export default function App() {
     }
   };
 
-  // Live simulated price telemetry
+   // Live simulated price telemetry
   const [livePrice, setLivePrice] = useState<number>(0);
   const [priceChangePct, setPriceChangePct] = useState<number>(0);
   const [priceBid, setPriceBid] = useState<number>(0);
