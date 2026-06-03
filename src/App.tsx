@@ -67,7 +67,7 @@ export default function App() {
   const [priceBid, setPriceBid] = useState<number>(0);
   const [priceAsk, setPriceAsk] = useState<number>(0);
 
-   // Tick live price telemetry feedback based on chosen symbol + Live Proxy Hook
+     // Tick live price telemetry feedback based on chosen symbol + Live Proxy Hook
   useEffect(() => {
     let basePrice = 2330.0;
     if (symbol === "XAU/USD") basePrice = 2330.00;
@@ -82,7 +82,7 @@ export default function App() {
     setPriceAsk(basePrice + basePrice * 0.05 / basePrice);
     setPriceChangePct((Math.random() - 0.5) * 0.1);
 
-    // 1. Fallback Local Simulation Interval
+    // 1. Fallback Local Simulation Interval (Always runs safely)
     const interval = setInterval(() => {
       setLivePrice((prev) => {
         let pip = 0.01;
@@ -105,51 +105,66 @@ export default function App() {
       });
     }, 700);
 
-    // 2. Live Connection Bridge to your running Project IDX Proxy Server
-    const socket = new WebSocket('ws://localhost:8080');
-
-    socket.onopen = () => {
-      console.log('📡 AETHER-UI coupled securely to IDX data proxy');
-    };
-
-    socket.onmessage = (event) => {
+    // 2. Production-Safe Data Proxy Bridge Configuration
+    let socket: WebSocket | null = null;
+    
+    // Only attempt localhost connections if you are developing locally
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       try {
-        const liveTick = JSON.parse(event.data);
-        
-        // Match the asset selected in your cockpit dropdown to the incoming stream tick
-        if (symbol === "XAU/USD" && liveTick.symbol === "XAUUSD") {
-          const incomingPrice = parseFloat(liveTick.price);
-          setLivePrice(incomingPrice);
-          setPriceChangePct(parseFloat(liveTick.change24h));
-          setPriceBid(incomingPrice - 0.07);
-          setPriceAsk(incomingPrice + 0.07);
-          
-          // Completely safe check to prevent white-screen crashes if audio utils aren't loaded
+        socket = new WebSocket('ws://localhost:8080');
+
+        socket.onopen = () => {
+          console.log('📡 AETHER-UI coupled securely to IDX data proxy');
+        };
+
+        socket.onmessage = (event) => {
           try {
-            // @ts-ignore
-            if (soundEnabled && typeof playTick === 'function') {
-              // @ts-ignore
-              playTick();
+            const liveTick = JSON.parse(event.data);
+            
+            if (symbol === "XAU/USD" && liveTick.symbol === "XAUUSD") {
+              const incomingPrice = parseFloat(liveTick.price);
+              setLivePrice(incomingPrice);
+              setPriceChangePct(parseFloat(liveTick.change24h));
+              setPriceBid(incomingPrice - 0.07);
+              setPriceAsk(incomingPrice + 0.07);
+              
+              // Multi-layered guard to prevent Web Audio exceptions from locking the UI thread
+              try {
+                if (soundEnabled && typeof playTick === 'function') {
+                  playTick();
+                }
+              } catch (audioErr) {
+                // Audio safely isolated
+              }
             }
-          } catch (audioError) {
-            // Catches any missing function issues silently so the app runs smoothly
+          } catch (error) {
+            console.error("Data proxy stream parse error:", error);
           }
-        }
-      } catch (error) {
-        console.error("Data proxy stream parse error:", error);
+        };
+
+        socket.onclose = () => {
+          console.log('🔌 Data proxy offline. Defaulting to system simulation telemetry.');
+        };
+        
+        socket.onerror = () => {
+          console.log('⚠️ WebSocket connection handshake bypassed safely.');
+        };
+      } catch (wsSetupError) {
+        console.error("WebSocket structural error bypassed:", wsSetupError);
       }
-    };
+    } else {
+      console.log('🌍 Production cloud detected: Simulation loop handling engine array natively.');
+    }
 
-    socket.onclose = () => {
-      console.log('🔌 Data proxy disconnected. Falling back to local simulation metrics.');
-    };
-
-    // Cleanup both the simulation interval and the websocket connection on component unmount/change
+    // Cleanup handles both arrays safely
     return () => {
       clearInterval(interval);
-      socket.close();
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
     };
   }, [symbol, soundEnabled]);
+
 
 
 
