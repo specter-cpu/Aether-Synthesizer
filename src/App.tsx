@@ -61,13 +61,13 @@ export default function App() {
     }
   };
 
-   // Live simulated price telemetry
+  // Live simulated price telemetry
   const [livePrice, setLivePrice] = useState<number>(0);
   const [priceChangePct, setPriceChangePct] = useState<number>(0);
   const [priceBid, setPriceBid] = useState<number>(0);
   const [priceAsk, setPriceAsk] = useState<number>(0);
 
-     // Tick live price telemetry feedback based on chosen symbol + Live Proxy Hook
+  // Tick live price telemetry feedback based on chosen symbol
   useEffect(() => {
     let basePrice = 2330.0;
     if (symbol === "XAU/USD") basePrice = 2330.00;
@@ -82,91 +82,41 @@ export default function App() {
     setPriceAsk(basePrice + basePrice * 0.05 / basePrice);
     setPriceChangePct((Math.random() - 0.5) * 0.1);
 
-    // 1. Fallback Local Simulation Interval (Always runs safely)
     const interval = setInterval(() => {
       setLivePrice((prev) => {
         let pip = 0.01;
         let volatilityFactor = 1;
-        if (symbol === "EUR/USD" || symbol === "GBP/USD") { pip = 0.00001; volatilityFactor = 8; }
-        else if (symbol === "BTC/USDT") { pip = 0.5; volatilityFactor = 15; }
-        else if (symbol === "ETH/USDT") { pip = 0.05; volatilityFactor = 12; }
-        else if (symbol === "XAU/USD") { pip = 0.05; volatilityFactor = 10; }
-        else if (symbol === "XAG/USD") { pip = 0.005; volatilityFactor = 8; }
+        if (symbol === "EUR/USD" || symbol === "GBP/USD") {
+          pip = 0.00001;
+          volatilityFactor = 8;
+        } else if (symbol === "BTC/USDT") {
+          pip = 0.5;
+          volatilityFactor = 15;
+        } else if (symbol === "ETH/USDT") {
+          pip = 0.05;
+          volatilityFactor = 12;
+        } else if (symbol === "XAU/USD") {
+          pip = 0.05;
+          volatilityFactor = 10;
+        } else if (symbol === "XAG/USD") {
+          pip = 0.005;
+          volatilityFactor = 8;
+        }
 
         const ticks = Math.round((Math.random() - 0.5) * volatilityFactor);
         const nextPrice = prev + ticks * pip;
-
+        
         const spread = symbol.includes("EUR") || symbol.includes("GBP") ? 0.00012 : symbol.includes("BTC") ? 2.5 : 0.15;
         setPriceBid(nextPrice - spread / 2);
         setPriceAsk(nextPrice + spread / 2);
         setPriceChangePct((prevPct) => prevPct + (Math.random() - 0.5) * 0.004);
-
+        
         return nextPrice;
       });
     }, 700);
 
-    // 2. Production-Safe Data Proxy Bridge Configuration
-    let socket: WebSocket | null = null;
-    
-    // Only attempt localhost connections if you are developing locally
-    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      try {
-        socket = new WebSocket('ws://localhost:8080');
-
-        socket.onopen = () => {
-          console.log('📡 AETHER-UI coupled securely to IDX data proxy');
-        };
-
-        socket.onmessage = (event) => {
-          try {
-            const liveTick = JSON.parse(event.data);
-            
-            if (symbol === "XAU/USD" && liveTick.symbol === "XAUUSD") {
-              const incomingPrice = parseFloat(liveTick.price);
-              setLivePrice(incomingPrice);
-              setPriceChangePct(parseFloat(liveTick.change24h));
-              setPriceBid(incomingPrice - 0.07);
-              setPriceAsk(incomingPrice + 0.07);
-              
-              // Multi-layered guard to prevent Web Audio exceptions from locking the UI thread
-              try {
-                if (soundEnabled && typeof playTick === 'function') {
-                  playTick();
-                }
-              } catch (audioErr) {
-                // Audio safely isolated
-              }
-            }
-          } catch (error) {
-            console.error("Data proxy stream parse error:", error);
-          }
-        };
-
-        socket.onclose = () => {
-          console.log('🔌 Data proxy offline. Defaulting to system simulation telemetry.');
-        };
-        
-        socket.onerror = () => {
-          console.log('⚠️ WebSocket connection handshake bypassed safely.');
-        };
-      } catch (wsSetupError) {
-        console.error("WebSocket structural error bypassed:", wsSetupError);
-      }
-    } else {
-      console.log('🌍 Production cloud detected: Simulation loop handling engine array natively.');
-    }
-
-    // Cleanup handles both arrays safely
-    return () => {
-      clearInterval(interval);
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-    };
-  }, [symbol, soundEnabled]);
-
-
-
+    return () => clearInterval(interval);
+  }, [symbol]);
 
   // Sound Matrix State (Web Audio API)
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -184,8 +134,8 @@ export default function App() {
     handleRunStrategy();
   }, []);
 
-    // Submit parameter bounds to core backend strategy synthesizer
-  const handleRunStrategy = () => {
+  // Submit parameter bounds to core backend strategy synthesizer
+  const handleRunStrategy = async () => {
     setLoading(true);
     setErrorMsg(null);
     setData(null);
@@ -195,146 +145,51 @@ export default function App() {
       playArpeggioSequence();
     }
     
-    setTimeout(() => {
-      try {
-        const simulatedTrades: Trade[] = [];
-        let baseWinProbability = 0.55; 
-        if (strategyProtocol === "ICT Silver Bullet Model") {
-          baseWinProbability = 0.64; 
-        }
+    try {
+      const response = await fetch("/api/backtest", {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+         },
+         body: JSON.stringify({
+           symbol,
+           indicator: strategyProtocol,
+           bias,
+           riskPerTradePercent,
+           accountSize,
+           seriesSize,
+           newsBufferEnabled,
+           timeframe: getOptimalTimeframe(strategyProtocol, horizonMode),
+           rrSetup,
+           horizonMode,
+         }),
+      });
 
-        for (let i = 1; i <= seriesSize; i++) {
-          const id = `TX-${Math.floor(100000 + Math.random() * 900000)}`;
-          const direction = bias === "Bi-Directional" ? (Math.random() > 0.5 ? "LONG" : "SHORT") : (bias === "Bullish" ? "LONG" : "SHORT");
-          
-          let entryPrice = 2330.00 + (Math.random() - 0.5) * 45;
-          if (symbol === "XAG/USD") entryPrice = 31.50 + (Math.random() - 0.5) * 2;
-          if (symbol === "EUR/USD") entryPrice = 1.08550 + (Math.random() - 0.5) * 0.01;
-          if (symbol === "GBP/USD") entryPrice = 1.25200 + (Math.random() - 0.5) * 0.01;
-          if (symbol === "BTC/USDT") entryPrice = 67500.00 + (Math.random() - 0.5) * 800;
-          if (symbol === "ETH/USDT") entryPrice = 3450.00 + (Math.random() - 0.5) * 50;
-          
-          let outcome: "WIN" | "LOSS" | "SKIPPED" = "LOSS";
-          
-          if (newsBufferEnabled && Math.random() < 0.13) {
-            outcome = "SKIPPED";
-          } else {
-            outcome = Math.random() < baseWinProbability ? "WIN" : "LOSS";
-          }
-
-          let rGain = 0;
-          let comment = "";
-          let takeProfit = entryPrice;
-          let stopLoss = entryPrice;
-
-          const tickOffset = symbol.includes("EUR") || symbol.includes("GBP") ? 0.0015 : symbol.includes("XAG") ? 0.25 : symbol.includes("BTC") ? 150 : symbol.includes("ETH") ? 15 : 12.5;
-
-          if (outcome === "WIN") {
-            rGain = rrSetup === "1:1.5" ? 1.5 : rrSetup === "1:3" ? 3.0 : 2.0;
-            takeProfit = direction === "LONG" ? entryPrice + (tickOffset * rGain) : entryPrice - (tickOffset * rGain);
-            stopLoss = direction === "LONG" ? entryPrice - tickOffset : entryPrice + tickOffset;
-            comment = `${strategyProtocol} executed beautifully. Target validation liquidity matrix hit flawlessly.`;
-          } else if (outcome === "LOSS") {
-            rGain = -1.0;
-            takeProfit = direction === "LONG" ? entryPrice + (tickOffset * (rrSetup === "1:1.5" ? 1.5 : rrSetup === "1:3" ? 3.0 : 2.0)) : entryPrice - (tickOffset * (rrSetup === "1:1.5" ? 1.5 : rrSetup === "1:3" ? 3.0 : 2.0));
-            stopLoss = direction === "LONG" ? entryPrice - tickOffset : entryPrice + tickOffset;
-            comment = `Liquidity swept past structural invalidation. Stop loss triggered under premium bounds.`;
-          } else {
-            rGain = 0;
-            comment = horizonMode === "Macro Swing Execution" 
-              ? `Trade execution bypassed. High overnight spread or rollover risk parameters detected.`
-              : `Trade skipped automatically by 15-min Red Folder News Buffer rule safely.`;
-          }
-
-          simulatedTrades.push({
-            id,
-            tradeIndex: i,
-            symbol,
-            direction,
-            entryPrice: parseFloat(entryPrice.toFixed(symbol.includes("EUR") || symbol.includes("GBP") ? 5 : 2)),
-            takeProfit: parseFloat(takeProfit.toFixed(symbol.includes("EUR") || symbol.includes("GBP") ? 5 : 2)),
-            stopLoss: parseFloat(stopLoss.toFixed(symbol.includes("EUR") || symbol.includes("GBP") ? 5 : 2)),
-            outcome,
-            rGain,
-            comment
-          });
-        }
-
-                // --- QUANT QUANTITATIVE ENGINE CALCULATIONS ---
-        let totalWinsCount = 0;
-        let totalLossesCount = 0;
-        let grossWinsR = 0;
-        let grossLossesR = 0;
-        
-        let currentWinStreak = 0;
-        let currentLossStreak = 0;
-        let maxWinStreak = 0;
-        let maxLossStreak = 0;
-
-        simulatedTrades.forEach((t) => {
-          if (t.outcome === "WIN") {
-            totalWinsCount++;
-            grossWinsR += t.rGain;
-            currentWinStreak++;
-            currentLossStreak = 0;
-            if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
-          } else if (t.outcome === "LOSS") {
-            totalLossesCount++;
-            grossLossesR += Math.abs(t.rGain);
-            currentLossStreak++;
-            currentWinStreak = 0;
-            if (currentLossStreak > maxLossStreak) maxLossStreak = currentLossStreak;
-          } else {
-            currentWinStreak = 0;
-            currentLossStreak = 0;
-          }
-        });
-
-        const profitFactor = grossLossesR > 0 ? parseFloat((grossWinsR / grossLossesR).toFixed(2)) : grossWinsR;
-        const expectedWorstDrawdownR = maxLossStreak * 1.0; 
-
-        const localResult: BacktestResponse = {
-          success: true,
-          trades: simulatedTrades,
-          strategyDetails: {
-            optimizedTimeframe: getOptimalTimeframe(strategyProtocol, horizonMode),
-            optimizedProtocol: strategyProtocol,
-            strategyCode: `/*\n * @strategy Aether Quantitative Protocol: ${strategyProtocol}\n * Enforced parameters: Risk ${riskPerTradePercent}%, Cap $${accountSize.toLocaleString()}\n */\n//@version=5\nstrategy("Aether Synthesizer Edge Matrix", overlay=true)`,
-            reportNarrative: `Simulation successfully completed across ${seriesSize} iterations. Detected an operational Profit Factor of ${profitFactor} with a maximum peak-to-trough consecutive drawdown string of -${expectedWorstDrawdownR}R units.`
-          },
-          analytics: {
-            profitFactor,
-            maxWinStreak,
-            maxLossStreak,
-            expectedWorstDrawdownR,
-            grossWinsR,
-            grossLossesR
-          }
-        };
-
-        setData(localResult);
-        
-        if (localResult.strategyDetails?.optimizedTimeframe) {
-          setOptimizedTimeframe(localResult.strategyDetails.optimizedTimeframe);
-          setTimeframe(localResult.strategyDetails.optimizedTimeframe);
-        }
-        if (localResult.strategyDetails?.optimizedProtocol) {
-          setOptimizedProtocol(localResult.strategyDetails.optimizedProtocol);
-          setStrategyProtocol(localResult.strategyDetails.optimizedProtocol);
-          setIndicator(localResult.strategyDetails.optimizedProtocol);
-        }
-        if (localResult.trades && localResult.trades.length > 0) {
-          setSelectedTrade(localResult.trades[0]);
-        }
-      } catch (err: any) {
-        console.error(err);
-        setErrorMsg("Failed to process simulation data bounds inside client matrix container.");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Execution matrix error: ${response.statusText}`);
       }
-    }, 500);
-  };
 
+      const result: BacktestResponse = await response.json();
+      setData(result);
+      if (result.strategyDetails?.optimizedTimeframe) {
+        setOptimizedTimeframe(result.strategyDetails.optimizedTimeframe);
+        setTimeframe(result.strategyDetails.optimizedTimeframe);
+      }
+      if (result.strategyDetails?.optimizedProtocol) {
+        setOptimizedProtocol(result.strategyDetails.optimizedProtocol);
+        setStrategyProtocol(result.strategyDetails.optimizedProtocol);
+        setIndicator(result.strategyDetails.optimizedProtocol);
+      }
+      if (result.trades && result.trades.length > 0) {
+        setSelectedTrade(result.trades[0]);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "Failed to communicate with Aether synthesis server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Click on chronological logs table to investigate details and play audio sweep
   const inspectTrade = (trade: Trade) => {
@@ -929,125 +784,112 @@ export default function App() {
 
                   </div>
 
-                  {/* Diagnostic Console Container */}
+                  {/* Diagnostic Console Tabs Container */}
                   <DiagnosticTerminal
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                     loading={loading}
                     soundEnabled={soundEnabled}
-                    strategyCode={data?.strategyDetails.strategyCode}
-                    reportNarrative={data?.strategyDetails.reportNarrative}
-                    optimizedTimeframe={data?.strategyDetails.optimizedTimeframe}
-                    optimizedProtocol={data?.strategyDetails.optimizedProtocol}
+                    strategyCode={data?.strategyDetails?.strategyCode}
+                    reportNarrative={data?.strategyDetails?.reportNarrative}
+                    optimizedTimeframe={data?.strategyDetails?.optimizedTimeframe}
+                    optimizedProtocol={data?.strategyDetails?.optimizedProtocol}
                     totalTrades={seriesSize}
                     timeframe={getOptimalTimeframe(strategyProtocol, horizonMode)}
                   >
-                    {/* OPTION A: PERFORMANCE CHART VIEW */}
-                    {activeTab === "chart" && (
-                      <div id="equity-curve-chart-wrapper" className="overflow-hidden w-full h-[235px]">
-                        <ResponsiveContainer key={`chart-${horizonMode}-${symbol}`} width="100%" height={235} minWidth={280}>
-                          <LineChart
-                            data={chartData}
-                            margin={{ top: 10, right: 15, left: -25, bottom: -5 }}
-                          >
-                            <defs>
-                              <linearGradient id="gradientR" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.18} />
-                                <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
-                            <XAxis dataKey="name" stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#475569" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(t) => `${t >= 0 ? "+" : ""}${t}R`} />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const p = payload[0].payload;
-                                  const isFirst = p.name === "Start";
-                                  const rVal = p.R;
-                                  const balance = p.balance;
-                                  const pctGain = rVal * riskPerTradePercent;
+                    {/* Performance Line Chart embedded inside Diagnostic Terminal */}
+                    <div id="equity-curve-chart-wrapper" className="overflow-hidden w-full h-[235px]">
+                      <ResponsiveContainer key={`chart-${horizonMode}-${symbol}`} width="100%" height={235} minWidth={280}>
+                        <LineChart
+                          data={chartData}
+                          margin={{ top: 10, right: 15, left: -25, bottom: -5 }}
+                        >
+                          <defs>
+                            <linearGradient id="gradientR" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.18} />
+                              <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                          <XAxis
+                            dataKey="name"
+                            stroke="#475569"
+                            fontSize={9}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis
+                            stroke="#475569"
+                            fontSize={9}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(t) => `${t >= 0 ? "+" : ""}${t}R`}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const p = payload[0]?.payload;
+                                if (!p) return null;
+                                const isFirst = p.name === "Start";
+                                const rVal = p.R ?? 0;
+                                const balance = p.balance ?? 0;
+                                const pctGain = rVal * riskPerTradePercent;
 
-                                  return (
-                                    <div className="bg-slate-950 border border-cyan-500/20 px-3 py-2.5 rounded-lg text-[11px] font-mono shadow-xl space-y-1 select-none">
-                                      <p className="text-slate-400 font-bold border-b border-slate-900 pb-0.5 mb-1 text-center">{p.name}</p>
-                                      <div className="flex justify-between gap-5">
-                                        <span className="text-slate-500">Net R units:</span>
-                                        <span className={rVal >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                                          {rVal >= 0 ? "+" : ""}{rVal} R
+                                return (
+                                  <div className="bg-slate-950 border border-cyan-500/20 px-3 py-2.5 rounded-lg text-[11px] font-mono shadow-xl space-y-1 select-none">
+                                    <p className="text-slate-400 font-bold border-b border-slate-900 pb-0.5 mb-1 text-center">{p.name}</p>
+                                    <div className="flex justify-between gap-5">
+                                      <span className="text-slate-500">Net R units:</span>
+                                      <span className={rVal >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                                        {rVal >= 0 ? "+" : ""}{rVal} R
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between gap-5">
+                                      <span className="text-slate-500">Balance:</span>
+                                      <span className="text-slate-200">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    {!isFirst && (
+                                      <div className="flex justify-between gap-5 border-t border-slate-900/50 pt-1">
+                                        <span className="text-slate-500">Rate of change:</span>
+                                        <span className={pctGain >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                                          {pctGain >= 0 ? "+" : ""}{pctGain.toFixed(2)}%
                                         </span>
                                       </div>
-                                      <div className="flex justify-between gap-5">
-                                        <span className="text-slate-500">Balance:</span>
-                                        <span className="text-slate-200">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                      </div>
-                                      {!isFirst && (
-                                        <div className="flex justify-between gap-5 border-t border-slate-900/50 pt-1">
-                                          <span className="text-slate-500">Rate of change:</span>
-                                          <span className={pctGain >= 0 ? "text-emerald-400" : "text-rose-400"}>
-                                            {pctGain >= 0 ? "+" : ""}{pctGain.toFixed(2)}%
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" opacity={0.4} />
-                            <Line type="monotone" dataKey="R" stroke="#22d3ee" strokeWidth={5} strokeOpacity={0.12} className="blur-[4px]" dot={false} activeDot={false} isAnimationActive={!(seriesSize === 100 || seriesSize === 250)} />
-                            <Line type="monotone" dataKey="R" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3.5, stroke: "#0891b2", strokeWidth: 1.5, fill: "#020617" }} activeDot={{ r: 6, stroke: "#22d3ee", strokeWidth: 2, fill: "#020617" }} isAnimationActive={!(seriesSize === 100 || seriesSize === 250)} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-
-                    {/* OPTION B: INTEGRATED INTELLIGENCE REPORT MATRIX PANELS */}
-                    {activeTab === "narrative" && data?.analytics && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-1 animate-fadeIn w-full h-[235px] content-center">
-                        {/* Profit Factor Card */}
-                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
-                          <span className="text-[9px] font-mono text-cyan-400 tracking-wider uppercase font-bold">Profit Factor</span>
-                          <span className={`text-xl font-bold font-display tracking-tight ${(data.analytics.profitFactor || 0) >= 1.5 ? "text-cyan-400" : "text-slate-300"}`}>
-                            {data.analytics.profitFactor}
-                          </span>
-                          <span className="text-[8px] text-slate-500">Gross Win R / Gross Loss R</span>
-                        </div>
-
-                        {/* Max Loss Streak Card */}
-                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
-                          <span className="text-[9px] font-mono text-rose-400 tracking-wider uppercase font-bold">Max Loss Streak</span>
-                          <span className="text-xl font-bold font-display tracking-tight text-rose-500">
-                            -{data.analytics.maxLossStreak} R
-                          </span>
-                          <span className="text-[8px] text-slate-500">Consecutive invalidations</span>
-                        </div>
-
-                        {/* Max Win Streak Card */}
-                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
-                          <span className="text-[9px] font-mono text-emerald-400 tracking-wider uppercase font-bold">Max Win Streak</span>
-                          <span className="text-xl font-bold font-display tracking-tight text-emerald-400">
-                            +{data.analytics.maxWinStreak} Streak
-                          </span>
-                          <span className="text-[8px] text-slate-500">Consecutive targets hit</span>
-                        </div>
-
-                        {/* Total Volume Yield Breakdown Card */}
-                        <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between h-[110px] shadow-lg">
-                          <span className="text-[9px] font-mono text-indigo-400 tracking-wider uppercase font-bold">Gross Yield Outlay</span>
-                          <div className="text-[10px] font-mono font-medium space-y-0.5 text-slate-300">
-                            <div>Wins: <span className="text-emerald-400">+{data.analytics.grossWinsR.toFixed(1)}R</span></div>
-                            <div>Losses: <span className="text-rose-400">-{data.analytics.grossLossesR.toFixed(1)}R</span></div>
-                          </div>
-                          <span className="text-[8px] text-slate-500">Total volume distribution</span>
-                        </div>
-                      </div>
-                    )}
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" opacity={0.4} />
+                          
+                          {/* Glow outline Line */}
+                          <Line
+                            type="monotone"
+                            dataKey="R"
+                            stroke="#22d3ee"
+                            strokeWidth={5}
+                            strokeOpacity={0.12}
+                            className="blur-[4px]"
+                            dot={false}
+                            activeDot={false}
+                            isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
+                          />
+                          {/* Primary Sharpe Line */}
+                          <Line
+                            type="monotone"
+                            dataKey="R"
+                            stroke="#06b6d4"
+                            strokeWidth={2.5}
+                            dot={{ r: 3.5, stroke: "#0891b2", strokeWidth: 1.5, fill: "#020617" }}
+                            activeDot={{ r: 6, stroke: "#22d3ee", strokeWidth: 2, fill: "#020617" }}
+                            isAnimationActive={!(seriesSize === 100 || seriesSize === 250)}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </DiagnosticTerminal>
-                      
- 
-                                           
 
                 </div>
 
@@ -1208,9 +1050,9 @@ export default function App() {
 
                 </div>
 
-                                {/* Analytical inspector diagnostics (Col-4) */}
+                {/* Analytical inspector diagnostics (Col-4) */}
                 <div className="lg:col-span-4 bg-slate-900/35 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md shadow-xl flex flex-col justify-between relative overflow-hidden">
-
+                  
                   {/* Neon HUD Bracket Styling */}
                   <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t-2 border-r-2 border-cyan-500/60"></div>
                   <div className="absolute bottom-0 left-0 w-2.5 h-2.5 border-b-2 border-l-2 border-cyan-500/60"></div>
@@ -1231,13 +1073,13 @@ export default function App() {
                           <span
                             className={`px-2 py-0.5 rounded text-[9px] font-mono font-extrabold border ${
                               currentSelectedTrade.outcome === "WIN"
-                                ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]"
+                                ? "bg-emerald-950/65 text-emerald-400 border-emerald-500/60"
                                 : currentSelectedTrade.outcome === "SKIPPED"
                                   ? "bg-amber-950/65 text-amber-400 border-amber-500/60 animate-pulse"
-                                  : "bg-rose-950/40 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.05)]"
+                                  : "bg-rose-950/65 text-rose-400 border-rose-500/60"
                             }`}
                           >
-                            {currentSelectedTrade.outcome === "WIN" ? "TARGET HIT" : currentSelectedTrade.outcome === "SKIPPED" ? "NEWS BUFFERED" : currentSelectedTrade.comment.includes("sweep") ? "LIQUIDITY SWEEP" : "STOPPED OUT"}
+                            {currentSelectedTrade.outcome === "WIN" ? "PROFIT EXITED" : currentSelectedTrade.outcome === "SKIPPED" ? "NEWS BUFFERED" : "LIQUIDITY SWEPT"}
                           </span>
                         </div>
 
@@ -1277,11 +1119,6 @@ export default function App() {
                             BRACKET EXIT PARAMETERS (1:2 RR MATRIX)
                           </p>
                           <div className="bg-slate-950 border border-slate-800/85 rounded-xl p-3 space-y-3 relative font-mono text-[10.5px]">
-                            {/* Proportional visual guide line metric */}
-                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden flex">
-                              <div className={`h-full ${currentSelectedTrade.outcome === 'WIN' ? 'bg-emerald-500 w-full' : currentSelectedTrade.outcome === 'SKIPPED' ? 'bg-slate-700 w-0' : 'bg-rose-500 w-1/3'}`} />
-                            </div>
-
                             {/* Take profit trigger */}
                             <div className={`flex items-center justify-between border-l-2 pl-2 ${currentSelectedTrade.outcome === "WIN" ? "border-emerald-500" : "border-slate-800"}`}>
                               <div>
@@ -1341,8 +1178,6 @@ export default function App() {
                   </div>
 
                 </div>
-  
-                    
 
               </div>
 

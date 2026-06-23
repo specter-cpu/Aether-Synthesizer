@@ -160,7 +160,7 @@ export default function DiagnosticTerminal({
               {/* Technical Report Box */}
               <div className="flex-1 bg-slate-950/80 border border-slate-800/60 rounded-xl p-4 overflow-y-auto max-h-[300px] text-xs leading-relaxed text-slate-300 font-sans border-l-3 border-l-indigo-500 shadow-inner">
                 <div className="space-y-4">
-                  {reportNarrative.split("\n\n").map((para, idx) => {
+                  {(reportNarrative || "").split("\n\n").map((para, idx) => {
                     if (para.startsWith("###")) {
                       return (
                         <h4 key={idx} className="text-xs font-mono font-bold text-cyan-400 tracking-wider border-b border-slate-800 pb-1 mt-4 uppercase flex items-center gap-1.5">
@@ -225,10 +225,10 @@ export default function DiagnosticTerminal({
                 
                 {/* Numeric line columns to simulate a software editor layout */}
                 <div className="bg-slate-950/50 border-r border-slate-900/80 p-3 select-none text-[10px] text-right font-mono text-slate-600 space-y-0.5 leading-relaxed min-w-[34px] tracking-tighter">
-                  {Array.from({ length: Math.min(strategyCode.split("\n").length, 25) }).map((_, i) => (
+                  {Array.from({ length: Math.min((strategyCode || "").split("\n").length, 25) }).map((_, i) => (
                     <div key={i}>{i + 1}</div>
                   ))}
-                  {strategyCode.split("\n").length > 25 && <div>...</div>}
+                  {(strategyCode || "").split("\n").length > 25 && <div>...</div>}
                 </div>
 
                 {/* Main scroll block */}
