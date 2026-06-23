@@ -8,7 +8,15 @@ let holdsAmbientGain: GainNode | null = null;
 export function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    } catch (err) {
+      console.warn("Failed to create AudioContext in sandbox:", err);
+      return null;
+    }
   }
   return audioCtx;
 }

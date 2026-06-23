@@ -155,16 +155,28 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"chart" | "code" | "narrative">("chart");
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
-  // Run strategy synthesis backtest on application startup
+  // Run strategy synthesis backtest on application startup with resilient retry
   useEffect(() => {
-    handleRunStrategy();
+    let active = true;
+    const runWithRetry = async (retriesLeft = 4, delay = 1200) => {
+      const success = await handleRunStrategy();
+      if (!success && active && retriesLeft > 0) {
+        console.warn(`[Aether] Dev server connection cold or starting, retrying initial backtest in ${delay}ms... (${retriesLeft} retries left)`);
+        setTimeout(() => {
+          if (active) runWithRetry(retriesLeft - 1, delay * 1.5);
+        }, delay);
+      }
+    };
+    runWithRetry();
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Submit parameter bounds to core backend strategy synthesizer
-  const handleRunStrategy = async () => {
+  const handleRunStrategy = async (): Promise<boolean> => {
     setLoading(true);
     setErrorMsg(null);
-    setData(null);
     setSelectedTrade(null);
     setCurrentPage(1);
     if (soundEnabled) {
@@ -209,9 +221,11 @@ export default function App() {
       if (result.trades && result.trades.length > 0) {
         setSelectedTrade(result.trades[0]);
       }
+      return true;
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || "Failed to communicate with Aether synthesis server.");
+      return false;
     } finally {
       setLoading(false);
     }
