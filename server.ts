@@ -407,6 +407,77 @@ function resolveIndicatorKey(key: string): string {
   return norm;
 }
 
+// REST API for real live market telemetry from Yahoo Finance
+app.get("/api/live-feed", async (req, res) => {
+  const symbol = (req.query.symbol as string) || "XAU/USD";
+  try {
+    let yahooSymbol = "BTC-USD";
+    if (symbol.includes("ETH")) yahooSymbol = "ETH-USD";
+    else if (symbol.includes("EUR")) yahooSymbol = "EURUSD=X";
+    else if (symbol.includes("GBP")) yahooSymbol = "GBPUSD=X";
+    else if (symbol.includes("XAU") || symbol.toLowerCase().includes("gold")) yahooSymbol = "GC=F";
+    else if (symbol.includes("XAG") || symbol.toLowerCase().includes("silver")) yahooSymbol = "SI=F";
+    else if (symbol.includes("AAPL")) yahooSymbol = "AAPL";
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch live market chart data: status ${response.status}`);
+    }
+
+    const data: any = await response.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) {
+      throw new Error(`Data format error for target symbol: ${symbol}`);
+    }
+
+    const meta = result.meta || {};
+    const price = meta.regularMarketPrice || meta.regularMarketPreviousClose;
+    const prevClose = meta.previousClose || meta.regularMarketPreviousClose || price;
+    const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0;
+
+    const spread = symbol.includes("EUR") || symbol.includes("GBP") ? 0.00012 : symbol.includes("BTC") ? 2.5 : 0.15;
+    const bid = price - spread / 2;
+    const ask = price + spread / 2;
+
+    res.json({
+      price: parseFloat(price.toFixed(5)),
+      changePct: parseFloat(changePct.toFixed(4)),
+      bid: parseFloat(bid.toFixed(5)),
+      ask: parseFloat(ask.toFixed(5))
+    });
+  } catch (err: any) {
+    // Return robust computed fallback if API experiences transient errors
+    let basePrice = 2330.00;
+    if (symbol.includes("BTC")) basePrice = 67500.00;
+    else if (symbol.includes("ETH")) basePrice = 3450.00;
+    else if (symbol.includes("EUR")) basePrice = 1.08550;
+    else if (symbol.includes("GBP")) basePrice = 1.25200;
+    else if (symbol.includes("XAU") || symbol.toLowerCase().includes("gold")) basePrice = 2330.00;
+    else if (symbol.includes("XAG") || symbol.toLowerCase().includes("silver")) basePrice = 31.50;
+
+    const drift = (Math.random() - 0.5) * (basePrice * 0.0008);
+    const price = basePrice + drift;
+    const spread = symbol.includes("EUR") || symbol.includes("GBP") ? 0.00012 : symbol.includes("BTC") ? 2.5 : 0.15;
+    const bid = price - spread / 2;
+    const ask = price + spread / 2;
+    const changePct = (Math.random() - 0.5) * 0.15;
+
+    res.json({
+      price: parseFloat(price.toFixed(5)),
+      changePct: parseFloat(changePct.toFixed(4)),
+      bid: parseFloat(bid.toFixed(5)),
+      ask: parseFloat(ask.toFixed(5)),
+      simulated: true
+    });
+  }
+});
+
 // REST API for quantitative strategy synthesis and backtest
 app.post("/api/backtest", async (req, res) => {
   try {

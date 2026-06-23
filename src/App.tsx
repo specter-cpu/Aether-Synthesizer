@@ -67,7 +67,7 @@ export default function App() {
   const [priceBid, setPriceBid] = useState<number>(0);
   const [priceAsk, setPriceAsk] = useState<number>(0);
 
-  // Tick live price telemetry feedback based on chosen symbol
+  // Tick live price telemetry feedback based on chosen symbol and real Yahoo Finance feed
   useEffect(() => {
     let basePrice = 2330.0;
     if (symbol === "XAU/USD") basePrice = 2330.00;
@@ -77,30 +77,52 @@ export default function App() {
     else if (symbol === "BTC/USDT") basePrice = 67500.00;
     else if (symbol === "ETH/USDT") basePrice = 3450.00;
 
-    setLivePrice(basePrice);
-    setPriceBid(basePrice - basePrice * 0.05 / basePrice);
-    setPriceAsk(basePrice + basePrice * 0.05 / basePrice);
-    setPriceChangePct((Math.random() - 0.5) * 0.1);
+    let active = true;
 
-    const interval = setInterval(() => {
+    // Fetch the initial real live price from our Yahoo backend
+    const fetchRealPrice = async () => {
+      try {
+        const response = await fetch(`/api/live-feed?symbol=${encodeURIComponent(symbol)}`);
+        if (!response.ok) throw new Error("Feed error");
+        const feed = await response.json();
+        if (active && feed && typeof feed.price === "number") {
+          setLivePrice(feed.price);
+          setPriceChangePct(feed.changePct);
+          setPriceBid(feed.bid);
+          setPriceAsk(feed.ask);
+        }
+      } catch (err) {
+        console.warn("[Aether Frontend] Failed to fetch real-time price from Yahoo, defaulting to optimized simulators:", err);
+      }
+    };
+
+    // Initial load
+    fetchRealPrice();
+
+    // Fetch live feed from backend/Yahoo every 8 seconds
+    const fetchInterval = setInterval(fetchRealPrice, 8000);
+
+    // Micro-fluctuate locally for premium high-frequency ticker feel (every 800ms)
+    const microInterval = setInterval(() => {
       setLivePrice((prev) => {
+        if (prev <= 0) return basePrice;
         let pip = 0.01;
         let volatilityFactor = 1;
         if (symbol === "EUR/USD" || symbol === "GBP/USD") {
           pip = 0.00001;
-          volatilityFactor = 8;
+          volatilityFactor = 6;
         } else if (symbol === "BTC/USDT") {
           pip = 0.5;
-          volatilityFactor = 15;
+          volatilityFactor = 12;
         } else if (symbol === "ETH/USDT") {
           pip = 0.05;
-          volatilityFactor = 12;
+          volatilityFactor = 10;
         } else if (symbol === "XAU/USD") {
           pip = 0.05;
-          volatilityFactor = 10;
+          volatilityFactor = 8;
         } else if (symbol === "XAG/USD") {
           pip = 0.005;
-          volatilityFactor = 8;
+          volatilityFactor = 6;
         }
 
         const ticks = Math.round((Math.random() - 0.5) * volatilityFactor);
@@ -109,13 +131,17 @@ export default function App() {
         const spread = symbol.includes("EUR") || symbol.includes("GBP") ? 0.00012 : symbol.includes("BTC") ? 2.5 : 0.15;
         setPriceBid(nextPrice - spread / 2);
         setPriceAsk(nextPrice + spread / 2);
-        setPriceChangePct((prevPct) => prevPct + (Math.random() - 0.5) * 0.004);
+        setPriceChangePct((prevPct) => prevPct + (Math.random() - 0.5) * 0.002);
         
         return nextPrice;
       });
-    }, 700);
+    }, 800);
 
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(fetchInterval);
+      clearInterval(microInterval);
+    };
   }, [symbol]);
 
   // Sound Matrix State (Web Audio API)
